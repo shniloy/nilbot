@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Unread Mail Fetcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap'); /* Using Roboto */
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #eef2f6; /* Lighter background */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* Softer, wider shadow */
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+        }
+        h1 {
+            color: #3f51b5; /* Deeper blue for main heading */
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+        button {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+            padding: 10px 24px; /* Slightly more padding */
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        #authorize_button {
+            background-color: #4285F4; /* Google Blue */
+            color: white;
+        }
+        #authorize_button:hover {
+            background-color: #357ae8; /* Darker Google Blue */
+        }
+        #signout_button {
+            background-color: #dc3545; /* Bootstrap-like red for danger */
+            color: white;
+        }
+        #signout_button:hover {
+            background-color: #c82333;
+        }
+        #fetch_button {
+            background-color: #28a745; /* Bootstrap-like green for success */
+            color: white;
+        }
+        #fetch_button:hover {
+            background-color: #218838;
+        }
+
+        .message-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 25px; /* Increased margin */
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dcdcdc; /* Lighter border */
+            border-radius: 8px;
+            background-color: #fcfcfc; /* Slightly off-white */
+            text-align: left;
+        }
+        .message-item {
+            padding: 15px 20px; /* More padding */
+            border-bottom: 1px solid #eeeeee; /* Even lighter border */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message-item:last-child {
+            border-bottom: none;
+        }
+        .message-subject {
+            font-weight: 600;
+            color: #333333; /* Darker text for readability */
+            font-size: 1.1em; /* Slightly larger */
+        }
+        .message-sender {
+            font-size: 0.9em;
+            color: #666666; /* Softer grey */
+        }
+        .message-label {
+            font-size: 0.8em;
+            color: #1a73e8; /* A Google-like blue for labels */
+            font-weight: bold;
+            margin-top: 6px; /* Increased margin */
+        }
+        .message-links {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #dddddd; /* Lighter dashed border */
+        }
+        .message-links a {
+            display: block;
+            color: #1a73e8; /* Consistent link color */
+            text-decoration: underline;
+            font-size: 0.85em; /* Slightly larger */
+            margin-bottom: 6px;
+            word-break: break-all;
+        }
+        .status-message {
+            margin-top: 20px;
+            font-weight: 500;
+            color: #3f51b5; /* Consistent with heading blue */
+            font-size: 0.95em;
+        }
+        .error-message {
+            color: #dc3545; /* Consistent with danger red */
+        }
+        .new-email-notification {
+            background-color: #e0f2f7; /* Light blue notification */
+            border: 1px solid #b3e5fc; /* Matching border */
+            color: #01579b; /* Darker blue text */
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+        .no-messages {
+            padding: 25px;
+            color: #999999; /* Softer grey */
+            font-style: italic;
+        }
+        .link-warning {
+            font-size: 0.8em; /* Slightly larger warning */
+            color: #dc3545; /* Danger red */
+            margin-top: 8px;
+            font-weight: bold;
+        }
+        .view-in-gmail-button {
+            background-color: #1a73e8; /* Google blue for the link button */
+            color: white;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            transition: background-color 0.2s ease;
+        }
+        .view-in-gmail-button:hover {
+            background-color: #0b5fcc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold">Gmail Opener Bot v2</h1>
+        <p>maker ▶ <a href="https://t.me/niloyontelegram"><u>@niloyontelegram</u></a></p>
+<br>
+        <button id="authorize_button" class="py-2 px-6 rounded-lg mr-4">
+            Authorize Gmail Access
+        </button>
+        <button id="signout_button" class="py-2 px-6 rounded-lg hidden">
+            Sign Out
+        </button>
+        <button id="fetch_button" class="py-2 px-6 rounded-lg mt-4 hidden">
+            Fetch Latest Unread Mail (Manual)
+        </button>
+        
+        <div id="new_email_alert" class="new-email-notification hidden">
+            New unread email detected! Links are opening automatically in new tabs in <span id="countdown_timer">3</span> seconds (your current tab should remain active).
+        </div>
+        <div id="status" class="status-message mt-4"></div>
+        
+        <ul id="message_list" class="message-list">
+            <li class="no-messages">Click "Authorize Gmail Access" to begin.</li>
+        </ul>
+    </div>
+
+    <script>
+        // Your OAuth 2.0 Client ID from Google Cloud Console (Web application type)
+        // Make sure your Authorized Redirect URI in Google Cloud Console matches the URL where you open this HTML file.
+        const CLIENT_ID = '152672909277-ehbp7em9up7hs5osaph3s581ou42dluh.apps.googleusercontent.com';
+        const API_KEY = ''; // Not strictly needed for user data with OAuth, but good practice to include if you have one.
+
+        // Discovery document for the Gmail API
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest';
+
+        // Authorization scopes required to read Gmail data
+        const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+
+        // Polling interval for checking new emails (in milliseconds)
+        const POLLING_INTERVAL_MS = 3000; // 3 seconds
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let pollingIntervalId = null; // To store the ID of the polling interval
+        let lastFetchedMessageIds = new Set(); // To keep track of message IDs already displayed
+        let currentExtractedLinks = []; // To store links from the latest fetched email
+        let openedLinksHistory = new Set(); // To prevent opening the same link multiple times
+        let countdownTimerId = null; // To store the ID of the countdown interval
+
+        const authorizeButton = document.getElementById('authorize_button');
+        const signoutButton = document.getElementById('signout_button');
+        const fetchButton = document.getElementById('fetch_button');
+        const statusDiv = document.getElementById('status');
+        const messageList = document.getElementById('message_list');
+        const newEmailAlert = document.getElementById('new_email_alert');
+        const countdownTimerSpan = document.getElementById('countdown_timer');
+
+        /**
+         * Callback after the GIS client library is loaded.
+         */
+        function gisLoaded() {
+            console.log('GIS client library loaded. Initializing token client.');
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse) => {
+                    console.log('Token response received:', tokenResponse);
+                    if (tokenResponse && tokenResponse.access_token) {
+                        gapi.client.setToken(tokenResponse);
+                        statusDiv.textContent = 'Authorization successful!';
+                        updateButtons(true);
+                        startPolling(); // Start polling after successful auth
+                    } else {
+                        statusDiv.textContent = 'Authorization failed.';
+                        updateButtons(false);
+                        stopPolling();
+                    }
+                },
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        /**
+         * Callback after the GAPI client library is loaded.
+         */
+        function gapiLoaded() {
+            console.log('GAPI client library loaded. Loading client.');
+            gapi.load('client', initializeGapiClient);
+        }
+
+        /**
+         * Initializes the GAPI client and sets up event listeners.
+         */
+        async function initializeGapiClient() {
+            console.log('Initializing GAPI client...');
+            await gapi.client.init({
+                apiKey: API_KEY, // API Key is optional if only using OAuth for user data
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            console.log('GAPI client initialized.');
+            maybeEnableButtons();
+        }
+
+        /**
+         * Enables/disables buttons based on GAPI and GIS initialization.
+         */
+        function maybeEnableButtons() {
+            console.log(`Checking button enablement: gapiInited=${gapiInited}, gisInited=${gisInited}`);
+            if (gapiInited && gisInited) {
+                console.log('Both GAPI and GIS initialized. Attaching event listeners.');
+                authorizeButton.onclick = handleAuthClick;
+                signoutButton.onclick = handleSignoutClick;
+                fetchButton.onclick = fetchLatestUnreadMail; // Manual fetch now calls new function
+
+                // Check if a token already exists in session (e.g., from a previous successful auth)
+                if (gapi.client.getToken() === null) {
+                    updateButtons(false);
+                }
+                // Don't start polling immediately on page load if a token exists.
+                // It will be started by the handleAuthClick success or by a refresh.
+            } else {
+                console.log('Waiting for both GAPI and GIS to initialize...');
+            }
+        }
+
+        /**
+         * Handles the "Authorize" button click.
+         * Prompts the user to authorize if not already authorized.
+         */
+        function handleAuthClick() {
+            console.log('Authorize button clicked. Requesting access token...');
+            tokenClient.requestAccessToken();
+        }
+
+        /**
+         * Handles the "Sign Out" button click.
+         * Revokes the access token and updates the UI.
+         */
+        function handleSignoutClick() {
+            console.log('Sign Out button clicked.');
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    gapi.client.setToken(null);
+                    statusDiv.textContent = 'Signed out.';
+                    updateButtons(false);
+                    messageList.innerHTML = '<li class="no-messages">Click "Authorize Gmail Access" to begin.</li>';
+                    lastFetchedMessageIds.clear(); // Clear cached IDs on sign out
+                    currentExtractedLinks = []; // Clear extracted links
+                    openedLinksHistory.clear(); // New: Clear opened links history on sign out
+                    newEmailAlert.classList.add('hidden'); // Hide alert
+                    stopPolling(); // Stop polling on sign out
+                    if (countdownTimerId) clearInterval(countdownTimerId); // Stop countdown
+                    console.log('Access token revoked and UI updated.');
+                });
+            }
+        }
+
+        /**
+         * Updates the visibility of the authorize, sign-out, and fetch buttons.
+         * @param {boolean} isSignedIn True if the user is signed in, false otherwise.
+         */
+        function updateButtons(isSignedIn) {
+            if (isSignedIn) {
+                authorizeButton.classList.add('hidden');
+                signoutButton.classList.remove('hidden');
+                fetchButton.classList.remove('hidden');
+                console.log('Buttons updated: Signed in state.');
+            } else {
+                authorizeButton.classList.remove('hidden');
+                signoutButton.classList.add('hidden');
+                fetchButton.classList.add('hidden');
+                console.log('Buttons updated: Signed out state.');
+            }
+        }
+
+        /**
+         * Starts the polling for new emails.
+         */
+        function startPolling() {
+            if (pollingIntervalId) {
+                clearInterval(pollingIntervalId); // Clear any existing interval
+            }
+            // Initial fetch
+            fetchLatestUnreadMail(true); // Pass true to indicate initial/polling fetch
+            pollingIntervalId = setInterval(() => fetchLatestUnreadMail(true), POLLING_INTERVAL_MS);
+            statusDiv.textContent = `Polling for new emails every ${POLLING_INTERVAL_MS / 1000} seconds.`;
+            console.log('Polling started.');
+        }
+
+        /**
+         * Stops the polling for new emails.
+         */
+        function stopPolling() {
+            if (pollingIntervalId) {
+                clearInterval(pollingIntervalId);
+                pollingIntervalId = null;
+                console.log('Polling stopped.');
+            }
+        }
+
+        /**
+         * Opens all currently extracted links in new popup windows, preventing duplicates.
+         */
+        function openExtractedLinks() {
+            if (currentExtractedLinks.length > 0) {
+                console.log(`Attempting to open ${currentExtractedLinks.length} links in popup windows...`);
+                let linksActuallyOpened = 0;
+                let delay = 0;
+
+                const linksToProcess = [...currentExtractedLinks]; // Create a copy to iterate
+
+                linksToProcess.forEach((link, index) => {
+                    if (!openedLinksHistory.has(link)) {
+                        setTimeout(() => {
+                            window.open(link, '_blank', 'width=800,height=600,resizable=yes,scrollbars=yes');
+                            openedLinksHistory.add(link); // Add to history after attempting to open
+                            console.log(`Opened: ${link}`);
+                        }, delay);
+                        delay += 100; // 100ms delay between opening each link
+                        linksActuallyOpened++;
+                    } else {
+                        console.log(`Skipping duplicate link: ${link}`);
+                    }
+                });
+
+                // After all links are initiated, explicitly try to focus the original window
+                // Add a total delay that is slightly more than the last link's opening delay
+                const totalDelay = delay + 200; // Add a bit extra
+                setTimeout(() => {
+                    window.focus();
+                    if (linksActuallyOpened > 0) {
+                        statusDiv.textContent = `Opened ${linksActuallyOpened} new links automatically in popup windows. Your current tab should remain active.`;
+                    } else {
+                        statusDiv.textContent = 'No new links to open.';
+                    }
+                }, totalDelay);
+
+                currentExtractedLinks = []; // Clear links after initiating open
+            } else {
+                statusDiv.textContent = 'No links to open.';
+            }
+            newEmailAlert.classList.add('hidden'); // Hide the alert after opening links
+            countdownTimerSpan.textContent = '3'; // Reset countdown text
+        }
+
+        /**
+         * Fetches and displays the latest unread email from Inbox, Promotions, or Spam.
+         * @param {boolean} isPolling Indicates if this call is part of polling.
+         */
+        async function fetchLatestUnreadMail(isPolling = false) {
+            if (!isPolling) {
+                messageList.innerHTML = ''; // Clear UI only for manual fetch
+                newEmailAlert.classList.add('hidden');
+                if (countdownTimerId) clearInterval(countdownTimerId); // Stop any existing countdown
+                countdownTimerSpan.textContent = '3'; // Reset countdown text
+            }
+            
+            statusDiv.textContent = isPolling ? 'Checking for new unread mail...' : 'Fetching latest unread mail...';
+            statusDiv.classList.remove('error-message');
+            statusDiv.classList.add('status-message');
+            currentExtractedLinks = []; // Clear previous links
+            console.log('Attempting to fetch latest unread mail...');
+
+            try {
+                // Query for unread messages from Inbox, Promotions, OR Spam, ordered by date descending
+                const response = await gapi.client.gmail.users.messages.list({
+                    'userId': 'me',
+                    'q': 'is:unread (label:inbox OR label:promotions OR label:spam)', // Added label:spam
+                    'maxResults': 1 // Only fetch the latest 1 unread message
+                });
+
+                const currentMessages = response.result.messages || [];
+                console.log('Gmail API messages list response:', response.result);
+
+                if (!isPolling && currentMessages.length === 0) {
+                    statusDiv.textContent = 'No new unread mail found in Inbox, Promotions, or Spam.';
+                    messageList.innerHTML = '<li class="no-messages">No new unread mail found.</li>';
+                    return;
+                }
+
+                const newMessages = [];
+                const currentMessageIds = new Set();
+                currentMessages.forEach(msg => currentMessageIds.add(msg.id));
+
+                // Identify new messages
+                currentMessages.forEach(msg => {
+                    if (!lastFetchedMessageIds.has(msg.id)) {
+                        newMessages.push(msg);
+                    }
+                });
+
+                // Update lastFetchedMessageIds with all current unread messages
+                lastFetchedMessageIds = currentMessageIds;
+
+                if (newMessages.length > 0) {
+                    newEmailAlert.classList.remove('hidden');
+                    messageList.innerHTML = ''; // Always clear to show only the latest
+
+                    // Start countdown before opening links
+                    let countdown = 3;
+                    countdownTimerSpan.textContent = countdown;
+                    statusDiv.textContent = `Found a new unread email! Links opening soon...`;
+
+                    if (countdownTimerId) clearInterval(countdownTimerId); // Clear any old countdown
+                    countdownTimerId = setInterval(() => {
+                        countdown--;
+                        countdownTimerSpan.textContent = countdown;
+                        if (countdown <= 0) {
+                            clearInterval(countdownTimerId);
+                            countdownTimerId = null;
+                            // Process only the first (latest) new message after countdown
+                            const latestMessage = newMessages[0]; 
+                            getMessageDetails(latestMessage.id, 'FULL').then(msgDetails => {
+                                if (msgDetails) {
+                                    const li = document.createElement('li');
+                                    li.className = 'message-item';
+                                    const subject = msgDetails.subject || 'No Subject';
+                                    let sender = msgDetails.sender || 'Unknown Sender';
+                                    // Remove email address from sender if present in <name> <email> format
+                                    const match = sender.match(/^(.*?) <.*?>$/);
+                                    if (match && match[1]) {
+                                        sender = match[1].trim();
+                                    }
+                                    const messageUrl = `https://mail.google.com/mail/u/0/#inbox/${latestMessage.id}`; // Link to open in Gmail
+
+                                    li.innerHTML = `
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <div class="message-subject">${subject}</div>
+                                                <div class="message-sender">From: ${sender}</div>
+                                                <div class="message-label">Label: ${msgDetails.labels.join(', ')}</div>
+                                            </div>
+                                            <a href="${messageUrl}" target="_blank" class="view-in-gmail-button">View in Gmail</a>
+                                        </div>
+                                        <div class="message-links">
+                                            <strong class="text-gray-700 text-sm">Extracted Links:</strong>
+                                            <div class="link-warning">WARNING: Links are opening automatically. Proceed with caution.</div>
+                                            <div id="links-${latestMessage.id}"></div>
+                                        </div>
+                                    `;
+                                    messageList.appendChild(li); // Add the latest message
+
+                                    const linksContainer = li.querySelector(`#links-${latestMessage.id}`);
+                                    const extractedLinks = extractLinksFromHtml(msgDetails.body);
+                                    currentExtractedLinks = extractedLinks; // Store links globally
+
+                                    if (extractedLinks.length > 0) {
+                                        extractedLinks.forEach(link => {
+                                            const a = document.createElement('a');
+                                            a.href = link;
+                                            a.target = "_blank";
+                                            a.rel = "noopener noreferrer"; // Security best practice
+                                            a.textContent = link;
+                                            linksContainer.appendChild(a);
+                                        });
+                                        openExtractedLinks(); // Automatically open links
+                                    } else {
+                                        linksContainer.innerHTML = '<span class="text-gray-500 text-xs">No links found in email body.</span>';
+                                        newEmailAlert.classList.add('hidden'); // Hide alert if no links
+                                        statusDiv.textContent = 'New unread email found, but no links to open.';
+                                    }
+                                } else {
+                                    newEmailAlert.classList.add('hidden'); // Hide alert if message details fail
+                                    statusDiv.textContent = 'Could not get details for the new email.';
+                                }
+                            });
+                        }
+                    }, 1000); // Update countdown every second
+
+                } else if (!isPolling) {
+                    statusDiv.textContent = 'No unread mail found in Inbox, Promotions, or Spam.';
+                    messageList.innerHTML = '<li class="no-messages">No unread mail found.</li>';
+                } else {
+                    // If polling and no new messages, keep previous status or update subtly
+                    statusDiv.textContent = `Last checked: ${new Date().toLocaleTimeString()}. No new emails.`;
+                    newEmailAlert.classList.add('hidden'); // Ensure alert is hidden if no new email
+                }
+            } catch (error) {
+                console.error('Error fetching unread mail:', error);
+                statusDiv.textContent = `Error fetching emails: ${error.message || (error.result && error.result.error && error.result.error.message) || 'Unknown error'}`;
+                statusDiv.classList.add('error-message');
+                newEmailAlert.classList.add('hidden');
+                if (countdownTimerId) clearInterval(countdownTimerId); // Stop countdown on error
+            }
+        }
+
+        /**
+         * Fetches the full details of a specific message.
+         * @param {string} messageId The ID of the message to retrieve.
+         * @param {string} format The format of the message to return ('METADATA' or 'FULL').
+         * @returns {Promise<Object|null>} A promise that resolves with the message details (subject, sender, body, labels), or null if an error occurs.
+         */
+        async function getMessageDetails(messageId, format = 'METADATA') {
+            console.log(`Fetching details for message ID: ${messageId} with format: ${format}`);
+            try {
+                const response = await gapi.client.gmail.users.messages.get({
+                    'userId': 'me',
+                    'id': messageId,
+                    'format': format,
+                    'fields': 'payload.headers,payload.parts,payload.body,labelIds' // Request headers, parts/body, and labelIds
+                });
+                console.log(`Details for message ID ${messageId}:`, response.result);
+
+                const headers = response.result.payload.headers;
+                let subject = '';
+                let sender = '';
+                let body = '';
+                const labels = response.result.labelIds || [];
+
+                for (const header of headers) {
+                    if (header.name === 'Subject') {
+                        subject = header.value;
+                    } else if (header.name === 'From') {
+                        sender = header.value;
+                    }
+                }
+
+                // Function to decode base64url string
+                function decodeBase64Url(encoded) {
+                    return atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+                }
+
+                // Extract email body (prioritize HTML part if available)
+                const payload = response.result.payload;
+                if (payload.parts) {
+                    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html' && part.body && part.body.data);
+                    if (htmlPart) {
+                        body = decodeBase64Url(htmlPart.body.data);
+                    } else {
+                        // Fallback to plain text if no HTML part
+                        const plainTextPart = payload.parts.find(part => part.mimeType === 'text/plain' && part.body && part.body.data);
+                        if (plainTextPart) {
+                            body = decodeBase64Url(plainTextPart.body.data);
+                        }
+                    }
+                } else if (payload.body && payload.body.data) {
+                    // For simple emails without parts, body might be directly in payload.body
+                    body = decodeBase64Url(payload.body.data);
+                }
+
+                return { subject, sender, body, labels };
+            } catch (error) {
+                console.error(`Error fetching details for message ID ${messageId}:`, error);
+                return null;
+            }
+        }
+
+        /**
+         * Extracts all href links from an HTML string.
+         * @param {string} htmlString The HTML content of the email body.
+         * @returns {Array<string>} An array of extracted URLs.
+         */
+        function extractLinksFromHtml(htmlString) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const links = doc.querySelectorAll('a[href]');
+            const extractedUrls = [];
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                    extractedUrls.push(href);
+                }
+            });
+            return extractedUrls;
+        }
+
+        // Load GIS and GAPI client libraries
+        // gisLoaded() and gapiLoaded() are called by the script tags' onload attributes
+    </script>
+
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+</body>
+</html>
